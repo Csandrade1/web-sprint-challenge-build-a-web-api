@@ -3,25 +3,66 @@ const express = require("express");
 
 const Projects = require("./projects-model");
 
+const {
+  validateProjectId,
+  validateProject,
+} = require("../projects/projects-middleware");
+
 const router = express.Router();
 
-// [ ] `[GET] /api/projects`
-//   - Returns an array of projects as the body of the response.
-//   - If there are no projects it responds with an empty array.
-// - [ ] `[GET] /api/projects/:id`
-//   - Returns a project with the given `id` as the body of the response.
-//   - If there is no project with the given `id` it responds with a status code 404.
-// - [ ] `[POST] /api/projects`
-//   - Returns the newly created project as the body of the response.
-//   - If the request body is missing any of the required fields it responds with a status code 400.
-// - [ ] `[PUT] /api/projects/:id`
-//   - Returns the updated project as the body of the response.
-//   - If there is no project with the given `id` it responds with a status code 404.
-//   - If the request body is missing any of the required fields it responds with a status code 400.
-// - [ ] `[DELETE] /api/projects/:id`
-//   - Returns no response body.
-//   - If there is no project with the given `id` it responds with a status code 404.
-// - [ ] `[GET] /api/projects/:id/actions`
-//   - Returns an array of actions (could be empty) belonging to a project with the given `id`.
-//   - If there is no project with the given `id` it responds with a status code 404.
-module.exports = server;
+router.get("/", (req, res) => {
+  Projects.get().then((arrayOfProjects) => {
+    res.status(200).json(arrayOfProjects);
+  });
+});
+
+router.get("/:id", validateProjectId, (req, res) => {
+  res.json(req.existingProject);
+});
+
+router.post("/", (req, res) => {
+  let { name, description } = req.body;
+  let projectAdded = req.body;
+  if (name && description) {
+    Projects.insert(projectAdded).then((project) => {
+      res.status(201).json(project);
+    });
+  } else {
+    console.log(projectAdded);
+    res.status(400).json({ message: "Please provide a name and description" });
+  }
+});
+
+router.put("/:id", validateProjectId, validateProject, (req, res) => {
+  Projects.update(req.params.id, req.body)
+    .then((project) => {
+      res.status(201).json(project);
+    })
+    .catch((error) => {
+      res
+        .status(400)
+        .json({ message: "missing name, description or completed" });
+    });
+});
+
+router.delete("/:id", validateProjectId, (req, res) => {
+  Projects.remove(req.existingProject.id)
+    .then(() => {
+      res.status(200).json(req.existingProject);
+    })
+    .catch((error) => {
+      res.status(404).json({ message: "missing required id field" });
+    });
+});
+
+router.get("/:id/actions", validateProjectId, (req, res) => {
+  Projects.getProjectActions(req.params.id)
+    .then((arrayOfActions) => {
+      res.status(200).json(arrayOfActions);
+    })
+    .catch((error) => {
+      res.status(404).json({ message: "missing required id field" });
+    });
+});
+
+module.exports = router;
